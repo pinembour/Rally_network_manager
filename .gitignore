@@ -1,0 +1,9 @@
+./*
+
+!./.gitignore
+!./README
+
+!./manager.py
+
+!./rivlink_manager
+!./core
