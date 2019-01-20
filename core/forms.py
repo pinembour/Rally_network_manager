@@ -14,25 +14,25 @@ class ClientForm(forms.ModelForm):
 
     class Meta:
         model = Client
-        fields = ['admin', 'surnom', 'prenom', 'nom', 'appartement']
+        fields = ['admin', 'surnom', 'prenom', 'nom', 'email', 'commentaire']
 
 class CotisationForm(forms.ModelForm):
 
     class Meta:
         model = Cotisation
-        fields = ['semestre', 'client', 'montant']
+        fields = ['semestre', 'client', 'appartement', 'montant', 'cable', 'commentaire']
 
 class BatimentForm(forms.ModelForm):
 
     class Meta:
         model = Batiment
-        fields = ['numero']
+        fields = ['numero', 'commentaire']
 
 class AppartementForm(forms.ModelForm):
 
     class Meta:
         model = Appartement
-        fields = ['batiment', 'numero', 'port']
+        fields = ['batiment', 'numero', 'port', 'commentaire']
 
     def __init__(self, *args, **kwargs):
         super(AppartementForm, self).__init__(*args, **kwargs)
@@ -42,19 +42,19 @@ class SemestreForm(forms.ModelForm):
 
     class Meta:
         model = Semestre
-        fields = ['nom']
+        fields = ['nom', 'debut', 'commentaire']
 
 class SwitchForm(forms.ModelForm):
 
     class Meta:
         model = Switch
-        fields = ['adresse', 'batiment', 'modele']
+        fields = ['nom', 'adresse', 'batiment', 'modele', 'commentaire']
 
 class PortForm(forms.ModelForm):
 
     class Meta:
         model = Port
-        fields = ['numero', 'fonctionnel', 'a_jour', 'switch']
+        fields = ['numero', 'fonctionnel', 'a_jour', 'switch', 'commentaire']
 
 class MarqueForm(forms.ModelForm):
 

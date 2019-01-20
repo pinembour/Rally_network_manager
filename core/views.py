@@ -1,9 +1,12 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 
 from .models import Switch
 from .models import Appartement
+from .models import Cotisation
+from .models import Semestre
 
 import napalm
 import sys
@@ -14,7 +17,17 @@ def index(request):
     return HttpResponse("Hello, world. You're at the core index.")
 
 @login_required(login_url='/login/')
-def updateSwitchs(request, switch_id):
+def decableSwitch(request, switch_id):
+
+    switch = Switch.objects.get(id=switch_id)
+    switch.decable()
+    switch.save()
+
+    return HttpResponse("Switch " + switch.adresse + " decable")
+
+
+@login_required(login_url='/login/')
+def updateSwitch(request, switch_id, force):
 
     """Load a config for the device."""
 
@@ -50,36 +63,47 @@ def updateSwitchs(request, switch_id):
     registration_conf = open(registration_conf_file, 'r').read()
     root_password = open(pass_file, 'r').read().replace('\n', '')
 
-    ports = switch.ports_a_mettre_a_jour()
+    ports = switch.ports_a_mettre_a_jour(force)
+
+    semestre = Semestre.objects.order_by("-debut")[0]
+    print(semestre)
 
     final_config = ""
 
     for port in ports:
 
         config = ""
-        if port.is_connected():
+        if port.has_appartement():
+
             appartement = port.appartement
-            client = appartement.client
+            cotisations = appartement.cotisations.filter(semestre=semestre).all()
 
-            if appartement:
-                if appartement.client.admin:
+            if len(cotisations) > 0:
+
+                cotisation = cotisations[len(cotisations) - 1]
+                client = cotisation.client
+
+                if client.admin:
+                    print("Port: " + port.numero + " admin")
                     config = admin_conf.replace('$INTERFACE', port.numero)
-                    config = config.replace('$DESCRIPTION', appartement.client.getIdentifiant() + " - ADMIN")
-                elif appartement.client.cotisations.count() > 0:
-                    config = client_conf.replace('$INTERFACE', port.numero)
-                    config = config.replace('$DESCRIPTION', appartement.client.getIdentifiant())
+                    config = config.replace('$DESCRIPTION', "Appart " + appartement.numero + " - " + client.getIdentifiant() + " - ADMIN")
                 else:
-                    config = registration_conf.replace('$INTERFACE', port.numero)
-                    config = config.replace('$DESCRIPTION', "Appart " + appartement.numero)
+                    print("Port: " + port.numero + " cotisant")
+                    config = client_conf.replace('$INTERFACE', port.numero)
+                    config = config.replace('$DESCRIPTION', "Appart " + appartement.numero + " - " + client.getIdentifiant())
+            else:
+                print("Port: " + port.numero + " pas de cotisation")
+                config = registration_conf.replace('$INTERFACE', port.numero)
+                config = config.replace('$DESCRIPTION', "Appart " + appartement.numero)
 
-            final_config += config
         else:
+            print("pas cable")
             config = registration_conf.replace('$INTERFACE', port.numero)
             config = config.replace('$DESCRIPTION', "Not connected")
-            final_config += config
 
-    final_config += '\nend'
-    #return HttpResponse(final_config.replace('\n', '<br />'))
+        final_config += config
+
+    final_config += '\nend\ncopy r s\n'
 
     ## Use the appropriate network driver to connect to the device:
     driver = napalm.get_network_driver(switch.modele.marque.driver)
@@ -99,13 +123,7 @@ def updateSwitchs(request, switch_id):
     print(device.compare_config())
 
     ## You can commit or discard the candidate changes.
-    #choice = raw_input("\nWould you like to commit these changes? [yN]: ")
-    #if choice == 'y':
-    #  print('Committing ...')
     device.commit_config()
-    #else:
-    #  print('Discarding ...')
-    #  device.discard_config()
 
     # close the session with the device.
     device.close()
@@ -116,4 +134,13 @@ def updateSwitchs(request, switch_id):
 
     print('Done.')
 
-    return HttpResponse("Yo.")
+    return HttpResponse(final_config.replace('\n', '<br />'))
+
+@login_required(login_url='/admin/login/')
+def money(request):
+        
+        total = Cotisation.objects.filter(client__admin=False).aggregate(Sum('montant'))['montant__sum']
+        
+        message = "Total = " + str(total)
+        
+        return HttpResponse(message)
