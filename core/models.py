@@ -131,7 +131,8 @@ class Switch(models.Model):
     adresse = models.CharField(max_length=40, null=False)
 
     batiment = models.ForeignKey(
-        "Batiment"
+        "Batiment",
+        on_delete=models.CASCADE
     )
 
     modele = models.ForeignKey(
