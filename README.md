@@ -11,6 +11,7 @@ source env/bin/activate
 pip install django
 pip install napalm
 ./manage.py makemigrations
+./manage.py makemigrations core
 ./manage.py migrate
 ./manage.py createsuperuser
 ```
