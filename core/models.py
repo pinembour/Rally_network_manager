@@ -3,21 +3,17 @@ from django.db.models import Sum
 
 import unicodedata
 
-class Client(models.Model):
-    prenom = models.CharField(max_length=30, null=False)
-    nom = models.CharField(max_length=30, null=False)
-    surnom = models.CharField(max_length=30, null=True, blank=True)
-    email = models.EmailField(null=True, blank=True)
+class Engineer(models.Model):
+    name = models.CharField(max_length=30, null=False)
     admin = models.BooleanField(null=False, default=False)
-
-    commentaire = models.TextField(default="", null=True, blank=True)
+    comment = models.TextField(default="", null=True, blank=True)
 
     @staticmethod
     def search(pattern):
-        return Client.objects.filter(Q(surnom=pattern) | Q(nom=pattern) | Q(prenom=pattern))
+        return Engineer.objects.filter(Q(name=pattern))
 
     def getIdentifiant(self):
-        identifiant = self.surnom if self.surnom else (self.prenom + self.nom)
+        identifiant = self.name
 
         identifiant = str(unicodedata.normalize('NFKD', identifiant).encode('ascii', 'ignore'))
         identifiant.replace(" ", "")
@@ -30,31 +26,28 @@ class Client(models.Model):
         return identifiant
 
     def __str__(self):
-        return (self.surnom + " : " + self.prenom + " " + self.nom) if self.surnom else (self.prenom + " " + self.nom)
+        return self.name
 
-class Semestre(models.Model):
-    nom = models.CharField(max_length=30, null=False)
+class Event(models.Model):
+    name = models.CharField(max_length=30, null=False)
 
-    debut = models.DateField()
+    start = models.DateField()
 
-    commentaire = models.TextField(default="", null=True, blank=True)
+    comment = models.TextField(default="", null=True, blank=True)
 
-    def cotisants(self):
-        return self.cotisations.count()
-
-    def somme(self):
-        return self.cotisations.all().aggregate(Sum('montant'))['montant__sum']
+    def engineers(self):
+        return self.usedPorts.count()
 
     def __str__(self):
-        return self.nom
+        return self.name
 
-class Appartement(models.Model):
-    numero = models.CharField(max_length=30, null=False)
+class TablePort(models.Model):
+    number = models.CharField(max_length=30, null=False)
 
-    batiment = models.ForeignKey(
-        "Batiment",
+    infrastructure = models.ForeignKey(
+        "Infra",
         on_delete=models.CASCADE,
-        related_name="appartements"
+        related_name="tablePorts"
     )
 
     port = models.OneToOneField(
@@ -62,16 +55,16 @@ class Appartement(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='appartement'
+        related_name='tablePort'
     )
     
-    commentaire = models.TextField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.has_port():
-            self.port.a_jour = False
+            self.port.upToDate = False
             self.port.save()
-        super(Appartement, self).save(*args, **kwargs)
+        super(TablePort, self).save(*args, **kwargs)
 
     def has_port(self):
         has = False
@@ -82,101 +75,98 @@ class Appartement(models.Model):
         return has
 
     def __str__(self):
-        return str(self.batiment) + ", " + str(self.numero)
+        return str(self.infrastructure) + ", " + str(self.number)
 
-class Cotisation(models.Model):
-    montant = models.FloatField(null=False, default=5)
-    cable = models.IntegerField(default=0, null=False)
-
-    client = models.ForeignKey(
-        "Client",
+class UsedPort(models.Model):
+    engineer = models.ForeignKey(
+        "Engineer",
         on_delete=models.CASCADE,
-        related_name="cotisations"
+        related_name="usedPorts"
     )
 
-    appartement = models.ForeignKey(
-        "Appartement",
+    tablePort = models.ForeignKey(
+        "TablePort",
         on_delete=models.CASCADE,
-        related_name="cotisations"
+        related_name="usedPorts"
     )
 
-    semestre = models.ForeignKey(
-        "Semestre",
+    event = models.ForeignKey(
+        "Event",
         on_delete=models.CASCADE,
-        related_name="cotisations"
+        related_name="usedPorts"
     )
     
-    commentaire = models.TextField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        self.appartement.port.a_jour = False
-        self.appartement.port.save()
-        super(Cotisation, self).save(*args, **kwargs)
+        self.tablePort.port.upToDate = False
+        self.tablePort.port.save()
+        super(UsedPort, self).save(*args, **kwargs)
 
     def __str__(self):
-        return str(self.semestre) + " : " + str(self.client)
+        return str(self.event) + " : " + str(self.engineer)
 
-class Batiment(models.Model):
-    numero = models.CharField(max_length=30, null=False)
+class Infra(models.Model):
+    number = models.CharField(max_length=30, null=False)
     
-    commentaire = models.TextField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return "bat " + self.numero
+        return "infra " + self.number
 
 class Switch(models.Model):
 
-    nom = models.CharField(max_length=40, null=False, default="tep")
+    name = models.CharField(max_length=40, null=False, default="tep")
 
-    adresse = models.CharField(max_length=40, null=False)
+    address = models.CharField(max_length=40, null=False)
 
-    batiment = models.ForeignKey(
-        "Batiment",
+    infrastructure = models.ForeignKey(
+        "Infra",
         on_delete=models.CASCADE
     )
 
-    modele = models.ForeignKey(
-        "Modele",
+    model = models.ForeignKey(
+        "Model",
         on_delete=models.CASCADE,
         related_name="switchs"
     )
     
-    commentaire = models.TextField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
-    def decable(self):
+    def dismount(self):
         for port in self.ports.all():
-            port.appartement = None
+            port.tablePort = None
             port.save()
         return True
 
-    def a_jour(self):
-        return self.ports.filter(a_jour=False).count() == 0
+    def upToDate(self):
+        return self.ports.filter(upToDate=False).count() == 0
 
-    def ports_a_mettre_a_jour(self, force):
-        ports = self.ports.filter(fonctionnel=True)
+    def ports_to_update(self, force):
+        ports = self.ports.filter(working=True)
         if force == '0':
-            ports = ports.filter(a_jour=False)
+            ports = ports.filter(upToDate=False)
         return ports
 
-    def portsLibres(self):
-        return self.ports.all().exclude(appartement__isnull=False).exclude(fonctionnel__exact=False).count()
+    def portsFree(self):
+        return self.ports.all().exclude(tablePort__isnull=False).exclude(working__exact=False).count()
 
     def stable(self):
-        return self.portsLibres() > 2
+        return self.portsFree() > 2
     stable.boolean = True
     stable.short_description = "Stable"
 
     def desc(self):
-        return str(self) + " --> " + str(self.portsLibres()) + " ports disponibles"
+        return str(self) + " --> " + str(self.portsFree()) + " ports available"
     desc.short_description = "Description"
 
     def __str__(self):
-        return str(self.batiment) + " : " + self.adresse
+        return str(self.infrastructure) + " : " + self.address
 
 class Port(models.Model):
-    numero = models.CharField(max_length=10, null=False)
-    fonctionnel = models.BooleanField(null=False, default=True)
-    a_jour = models.BooleanField(null=False, default=False)
+    number = models.CharField(max_length=10, null=False)
+    working = models.BooleanField(null=False, default=True)
+    upToDate = models.BooleanField(null=False, default=False)
 
     switch = models.ForeignKey(
         "Switch",
@@ -184,44 +174,44 @@ class Port(models.Model):
         related_name='ports'
     )
     
-    commentaire = models.TextField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
-    def has_appartement(self):
+    def has_tablePort(self):
         has = False
         try:
-            has = (self.appartement is not None)
-        except Appartement.DoesNotExist:
+            has = (self.tablePort is not None)
+        except TablePort.DoesNotExist:
             pass
         return has
 
     def is_connected(self):
-        has_appartement = False
+        has_tablePort = False
         try:
-            has_appartement = (self.appartement is not None)
-        except Appartement.DoesNotExist:
+            has_tablePort = (self.tablePort is not None)
+        except TablePort.DoesNotExist:
             print("Error:" + str(self))
             pass
-        return has_appartement
+        return has_tablePort
 
     def __str__(self):
-        return str(self.switch) + " : " + self.numero + " : " + ("OK" if self.fonctionnel else "NOT OK")
+        return str(self.switch) + " : " + self.number + " : " + ("OK" if self.working else "NOT OK")
 
-class Marque(models.Model):
-    nom = models.CharField(max_length=30, null=False)
+class Brand(models.Model):
+    name = models.CharField(max_length=30, null=False)
 
     driver = models.CharField(max_length=40, null=False, default="ios")
 
     def __str__(self):
-        return self.nom
+        return self.name
 
-class Modele(models.Model):
-    nom = models.CharField(max_length=30, null=False)
+class Model(models.Model):
+    name = models.CharField(max_length=30, null=False)
 
-    marque = models.ForeignKey(
-        "Marque",
+    brand = models.ForeignKey(
+        "Brand",
         on_delete=models.CASCADE,
-        related_name = "modeles"
+        related_name = "models"
     )
 
     def __str__(self):
-        return str(self.marque) + " - " + self.nom
+        return str(self.brand) + " - " + self.name

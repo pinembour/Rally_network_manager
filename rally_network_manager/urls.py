@@ -1,4 +1,4 @@
-"""rivlink_manager URL Configuration
+"""rally_network_manager URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.10/topics/http/urls/
@@ -13,12 +13,12 @@ Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
-from django.conf.urls import include, url
+from django.urls import include, re_path
 from django.contrib import admin
 from django.views.generic import RedirectView
 
 urlpatterns = [
-    url(r'^core/', include("core.urls")),
-    url(r'^admin/', admin.site.urls),
-    url(r'^$', RedirectView.as_view(url='/admin/')),
+    re_path(r'^core/', include("core.urls")),
+    re_path(r'^admin/', admin.site.urls),
+    re_path(r'^$', RedirectView.as_view(url='/admin/')),
 ]

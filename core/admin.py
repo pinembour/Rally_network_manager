@@ -1,138 +1,130 @@
 from django.contrib import admin
 from django.utils.html import mark_safe
 
-from .models import Client
-from .models import Cotisation
-from .models import Semestre
-from .models import Appartement
-from .models import Batiment
+from .models import Engineer
+from .models import UsedPort
+from .models import Event
+from .models import TablePort
+from .models import Infra
 from .models import Switch
 from .models import Port
-from .models import Marque
-from .models import Modele
+from .models import Brand
+from .models import Model
 
-from .forms import ClientForm
-from .forms import CotisationForm
-from .forms import BatimentForm
-from .forms import AppartementForm
-from .forms import SemestreForm
+from .forms import EngineerForm
+from .forms import UsedPortForm
+from .forms import InfraForm
+from .forms import TablePortForm
+from .forms import EventForm
 from .forms import SwitchForm
 from .forms import PortForm
-from .forms import MarqueForm
-from .forms import ModeleForm
+from .forms import BrandForm
+from .forms import ModelForm
 
 from django.contrib.admin import AdminSite
-from django.utils.translation import ugettext_lazy
+from django.utils.translation import gettext_lazy
 
-class CotisationAdminInline(admin.TabularInline):
-    model = Cotisation
+class UsedPortAdminInline(admin.TabularInline):
+    model = UsedPort
     extra = 0
-    fields = ["client", "montant", "appartement"]
+    fields = ["engineer", "tablePort"]
 
 class PortAdminInline(admin.TabularInline):
     model = Port
     extra = 0
-    fields = ["numero", "fonctionnel", "a_jour"]
+    fields = ["number", "working", "upToDate"]
 
 class SwitchAdminInline(admin.TabularInline):
     model = Switch
     extra = 0
 
-class AppartementAdminInline(admin.TabularInline):
-    model = Appartement
+class TablePortAdminInline(admin.TabularInline):
+    model = TablePort
     extra = 0
-    fields = ["numero", "port"]
+    fields = ["number", "port"]
 
-class AppartementAdminInline_2(admin.StackedInline):
-    model = Appartement
+class TablePortAdminInline_2(admin.StackedInline):
+    model = TablePort
 
 
-class ClientAdmin(admin.ModelAdmin):
-    form = ClientForm
-    list_display = ('surnom', 'prenom', 'nom', 'email', 'admin')
-    search_fields = ['surnom', 'prenom', 'nom', 'email']
+class EngineerAdmin(admin.ModelAdmin):
+    form = EngineerForm
+    list_display = ('name', 'admin')
+    search_fields = ['name']
 
-class CotisationAdmin(admin.ModelAdmin):
-    form = CotisationForm
-    list_display = ('semestre', 'client', 'appartement', 'montant_view', 'cable_view', 'commentaire')
-    list_filter = ['semestre', 'appartement']
-    search_fields = ['client__prenom', 'client__nom', 'client__surnom']
+class UsedPortAdmin(admin.ModelAdmin):
+    form = UsedPortForm
+    list_display = ('event', 'engineer', 'tablePort', 'comment')
+    list_filter = ['event', 'tablePort']
+    search_fields = ['engineer__name']
 
-    def cable_view(self, obj):
-        return '%i e' % obj.cable
-    cable_view.short_description = 'Cable'
-
-    def montant_view(self, obj):
-        return '%i e' % obj.montant
-    montant_view.short_description = 'Montant'
-
-class BatimentAdmin(admin.ModelAdmin):
-    form = BatimentForm
-    list_display = ('numero', 'commentaire')
+class InfraAdmin(admin.ModelAdmin):
+    form = InfraForm
+    list_display = ('number', 'comment')
     list_filter = []
-    search_fields = ['numero']
-    inlines = [SwitchAdminInline, AppartementAdminInline]
+    search_fields = ['number']
+    inlines = [SwitchAdminInline, TablePortAdminInline]
 
-class AppartementAdmin(admin.ModelAdmin):
-    form = AppartementForm
-    list_display = ('numero', 'batiment', 'port', 'commentaire')
-    list_filter = ['batiment']
-    search_fields = ['numero', 'batiment__numero', 'commentaire']
+class TablePortAdmin(admin.ModelAdmin):
+    form = TablePortForm
+    list_display = ('number', 'infrastructure', 'port', 'comment')
+    list_filter = ['infrastructure']
+    search_fields = ['number', 'infrastructure__number', 'comment']
 
-class SemestreAdmin(admin.ModelAdmin):
-    form = SemestreForm
-    list_display = ('__str__', 'cotisants', 'somme')
+class EventAdmin(admin.ModelAdmin):
+    form = EventForm
+    list_display = ('__str__', 'engineers')
     list_filter = []
-    search_fields = ['nom', 'commentaire']
-    inlines = [CotisationAdminInline]
+    search_fields = ['name', 'comment']
+    inlines = [UsedPortAdminInline]
 
 class PortAdmin(admin.ModelAdmin):
     form = PortForm
-    list_display = ('switch', 'numero', 'appartement', 'fonctionnel', 'a_jour')
-    list_filter = ['fonctionnel', 'a_jour', 'switch']
-    search_fields = ['numero', 'commentaire']
+    list_display = ('switch', 'number', 'tablePort', 'working', 'upToDate')
+    list_filter = ['working', 'upToDate', 'switch']
+    search_fields = ['number', 'comment']
 
 class SwitchAdmin(admin.ModelAdmin):
     form = SwitchForm
-    list_display = ('nom', '__str__', 'desc', 'a_jour', 'mettre_a_jour', 'mettre_a_jour_force', 'decabler')
-    list_filter = ['modele']
-    search_fields = ['nom', 'commentaire']
+    list_display = ('name', '__str__', 'desc', 'upToDate', 'update', 'update_force', 'dismount')
+    list_filter = ['model']
+    search_fields = ['name', 'comment']
     inlines = [PortAdminInline]
 
-    def a_jour(self, obj):
-        return bool(obj.a_jour())
+    def upToDate(self, obj):
+        return bool(obj.upToDate())
 
-    def mettre_a_jour(self, obj):
-        return mark_safe('<a target="_blank" href="/core/updateSwitch/' + str(obj.id) + '/0"><input type="button" value="Mettre a jour"></input></a>')
+    def update(self, obj):
+        return mark_safe('<a target="_blank" href="/core/updateSwitch/' + str(obj.id) + '/0"><input type="button" value="Update"></input></a>')
 
-    def mettre_a_jour_force(self, obj):
-        return mark_safe('<a target="_blank" href="/core/updateSwitch/' + str(obj.id) + '/1"><input type="button" value="Forcer"></input></a>')
+    def update_force(self, obj):
+        return mark_safe('<a target="_blank" href="/core/updateSwitch/' + str(obj.id) + '/1"><input type="button" value="Force"></input></a>')
 
-    def decabler(self, obj):
-        return mark_safe('<a target="_blank" href="/core/decableSwitch/' + str(obj.id) + '"><input type="button" value="Decabler"></input></a>')
+    def dismount(self, obj):
+        return mark_safe('<a target="_blank" href="/core/dismountSwitch/' + str(obj.id) + '"><input type="button" value="Dismount"></input></a>')
 
-class MarqueAdmin(admin.ModelAdmin):
-    form = MarqueForm
+class BrandAdmin(admin.ModelAdmin):
+    form = BrandForm
     list_display = ('__str__',)
     list_filter = []
-    search_fields = ['nom']
+    search_fields = ['name']
 
-class ModeleAdmin(admin.ModelAdmin):
-    form = ModeleForm
+class ModelAdmin(admin.ModelAdmin):
+    form = ModelForm
     list_display = ('__str__',)
     list_filter = []
-    search_fields = ['nom']
+    search_fields = ['name']
 
-admin.site.register(Client, ClientAdmin)
-admin.site.register(Cotisation, CotisationAdmin)
-admin.site.register(Semestre, SemestreAdmin)
-admin.site.register(Appartement, AppartementAdmin)
-admin.site.register(Batiment, BatimentAdmin)
+admin.site.register(Engineer, EngineerAdmin)
+admin.site.register(UsedPort, UsedPortAdmin)
+admin.site.register(Event, EventAdmin)
+admin.site.register(TablePort, TablePortAdmin)
+admin.site.register(Infra, InfraAdmin)
 admin.site.register(Switch, SwitchAdmin)
 admin.site.register(Port, PortAdmin)
-admin.site.register(Marque, MarqueAdmin)
-admin.site.register(Modele, ModeleAdmin)
+admin.site.register(Brand, BrandAdmin)
+admin.site.register(Model, ModelAdmin)
 
-admin.site.site_header = 'Rivlink'
-admin.site.site_title = 'Rivlink manager |'
+admin.site.site_header = 'Rally Network Manager'
+admin.site.site_title = 'Rally Network Manager |'
 admin.site.index_title = ''

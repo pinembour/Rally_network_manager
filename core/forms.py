@@ -1,69 +1,69 @@
 from django import forms
 
-from .models import Client
-from .models import Cotisation
-from .models import Semestre
-from .models import Appartement
-from .models import Batiment
+from .models import Engineer
+from .models import UsedPort
+from .models import Event
+from .models import TablePort
+from .models import Infra
 from .models import Switch
 from .models import Port
-from .models import Marque
-from .models import Modele
+from .models import Brand
+from .models import Model
 
-class ClientForm(forms.ModelForm):
-
-    class Meta:
-        model = Client
-        fields = ['admin', 'surnom', 'prenom', 'nom', 'email', 'commentaire']
-
-class CotisationForm(forms.ModelForm):
+class EngineerForm(forms.ModelForm):
 
     class Meta:
-        model = Cotisation
-        fields = ['semestre', 'client', 'appartement', 'montant', 'cable', 'commentaire']
+        model = Engineer
+        fields = ['admin', 'name', 'comment']
 
-class BatimentForm(forms.ModelForm):
-
-    class Meta:
-        model = Batiment
-        fields = ['numero', 'commentaire']
-
-class AppartementForm(forms.ModelForm):
+class UsedPortForm(forms.ModelForm):
 
     class Meta:
-        model = Appartement
-        fields = ['batiment', 'numero', 'port', 'commentaire']
+        model = UsedPort
+        fields = ['event', 'engineer', 'tablePort', 'comment']
+
+class InfraForm(forms.ModelForm):
+
+    class Meta:
+        model = Infra
+        fields = ['number', 'comment']
+
+class TablePortForm(forms.ModelForm):
+
+    class Meta:
+        model = TablePort
+        fields = ['infrastructure', 'number', 'port', 'comment']
 
     def __init__(self, *args, **kwargs):
-        super(AppartementForm, self).__init__(*args, **kwargs)
+        super(TablePortForm, self).__init__(*args, **kwargs)
         self.fields['port'].required = False
 
-class SemestreForm(forms.ModelForm):
+class EventForm(forms.ModelForm):
 
     class Meta:
-        model = Semestre
-        fields = ['nom', 'debut', 'commentaire']
+        model = Event
+        fields = ['name', 'start', 'comment']
 
 class SwitchForm(forms.ModelForm):
 
     class Meta:
         model = Switch
-        fields = ['nom', 'adresse', 'batiment', 'modele', 'commentaire']
+        fields = ['name', 'address', 'infrastructure', 'model', 'comment']
 
 class PortForm(forms.ModelForm):
 
     class Meta:
         model = Port
-        fields = ['numero', 'fonctionnel', 'a_jour', 'switch', 'commentaire']
+        fields = ['number', 'working', 'upToDate', 'switch', 'comment']
 
-class MarqueForm(forms.ModelForm):
-
-    class Meta:
-        model = Marque
-        fields = ['nom', 'driver']
-
-class ModeleForm(forms.ModelForm):
+class BrandForm(forms.ModelForm):
 
     class Meta:
-        model = Modele
-        fields = ['nom', 'marque']
+        model = Brand
+        fields = ['name', 'driver']
+
+class ModelForm(forms.ModelForm):
+
+    class Meta:
+        model = Model
+        fields = ['name', 'brand']

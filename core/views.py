@@ -4,9 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 
 from .models import Switch
-from .models import Appartement
-from .models import Cotisation
-from .models import Semestre
+from .models import TablePort
+from .models import UsedPort
+from .models import Event
 
 import napalm
 import sys
@@ -17,13 +17,13 @@ def index(request):
     return HttpResponse("Hello, world. You're at the core index.")
 
 @login_required(login_url='/login/')
-def decableSwitch(request, switch_id):
+def dismountSwitch(request, switch_id):
 
     switch = Switch.objects.get(id=switch_id)
-    switch.decable()
+    switch.dismount()
     switch.save()
 
-    return HttpResponse("Switch " + switch.adresse + " decable")
+    return HttpResponse("Switch " + switch.address + " dismount")
 
 
 @login_required(login_url='/login/')
@@ -35,10 +35,10 @@ def updateSwitch(request, switch_id, force):
 
     switch = Switch.objects.get(id=switch_id)
 
-    conf_dir = switch.modele.marque.nom + "/" + switch.modele.nom + "/"
+    conf_dir = switch.model.brand.name + "/" + switch.model.name + "/"
 
     admin_conf_file = base_dir + conf_dir + "admin_port.conf"
-    client_conf_file = base_dir + conf_dir + "client_port.conf"
+    engineer_conf_file = base_dir + conf_dir + "engineer_port.conf"
     registration_conf_file = base_dir + conf_dir + "registration_port.conf"
     pass_file = base_dir + "switch_password"
 
@@ -46,8 +46,8 @@ def updateSwitch(request, switch_id, force):
         msg = 'Missing or invalid admin port config file {0}'.format(admin_conf_file)
         return HttpResponse(msg)
 
-    if not (os.path.exists(client_conf_file) and os.path.isfile(client_conf_file)):
-        msg = 'Missing or invalid client port config file {0}'.format(client_conf_file)
+    if not (os.path.exists(engineer_conf_file) and os.path.isfile(engineer_conf_file)):
+        msg = 'Missing or invalid engineer port config file {0}'.format(engineer_conf_file)
         return HttpResponse(msg)
 
     if not (os.path.exists(registration_conf_file) and os.path.isfile(registration_conf_file)):
@@ -59,46 +59,46 @@ def updateSwitch(request, switch_id, force):
         return HttpResponse(msg)
 
     admin_conf = open(admin_conf_file, 'r').read()
-    client_conf = open(client_conf_file, 'r').read()
+    engineer_conf = open(engineer_conf_file, 'r').read()
     registration_conf = open(registration_conf_file, 'r').read()
     root_password = open(pass_file, 'r').read().replace('\n', '')
 
-    ports = switch.ports_a_mettre_a_jour(force)
+    ports = switch.ports_to_update(force)
 
-    semestre = Semestre.objects.order_by("-debut")[0]
-    print(semestre)
+    event = Event.objects.order_by("-start")[0]
+    print(event)
 
     final_config = ""
 
     for port in ports:
 
         config = ""
-        if port.has_appartement():
+        if port.has_tablePort():
 
-            appartement = port.appartement
-            cotisations = appartement.cotisations.filter(semestre=semestre).all()
+            tablePort = port.tablePort
+            usedPorts = tablePort.usedPorts.filter(event=event).all()
 
-            if len(cotisations) > 0:
+            if len(usedPorts) > 0:
 
-                cotisation = cotisations[len(cotisations) - 1]
-                client = cotisation.client
+                usedPort = usedPorts[len(usedPorts) - 1]
+                engineer = usedPort.engineer
 
-                if client.admin:
-                    print("Port: " + port.numero + " admin")
-                    config = admin_conf.replace('$INTERFACE', port.numero)
-                    config = config.replace('$DESCRIPTION', "Appart " + appartement.numero + " - " + client.getIdentifiant() + " - ADMIN")
+                if engineer.admin:
+                    print("Port: " + port.number + " admin")
+                    config = admin_conf.replace('$INTERFACE', port.number)
+                    config = config.replace('$DESCRIPTION', "TablePort " + tablePort.number + " - " + engineer.getIdentifiant() + " - ADMIN")
                 else:
-                    print("Port: " + port.numero + " cotisant")
-                    config = client_conf.replace('$INTERFACE', port.numero)
-                    config = config.replace('$DESCRIPTION', "Appart " + appartement.numero + " - " + client.getIdentifiant())
+                    print("Port: " + port.number + " cotisant")
+                    config = engineer_conf.replace('$INTERFACE', port.number)
+                    config = config.replace('$DESCRIPTION', "TablePort " + tablePort.number + " - " + engineer.getIdentifiant())
             else:
-                print("Port: " + port.numero + " pas de cotisation")
-                config = registration_conf.replace('$INTERFACE', port.numero)
-                config = config.replace('$DESCRIPTION', "Appart " + appartement.numero)
+                print("Port: " + port.number + " pas de usedPort")
+                config = registration_conf.replace('$INTERFACE', port.number)
+                config = config.replace('$DESCRIPTION', "TablePort " + tablePort.number)
 
         else:
             print("pas cable")
-            config = registration_conf.replace('$INTERFACE', port.numero)
+            config = registration_conf.replace('$INTERFACE', port.number)
             config = config.replace('$DESCRIPTION', "Not connected")
 
         final_config += config
@@ -106,10 +106,10 @@ def updateSwitch(request, switch_id, force):
     final_config += '\nend\ncopy r s\n'
 
     ## Use the appropriate network driver to connect to the device:
-    driver = napalm.get_network_driver(switch.modele.marque.driver)
+    driver = napalm.get_network_driver(switch.model.brand.driver)
 
     # Connect:
-    device = driver(hostname=switch.adresse, username='root', password=root_password)
+    device = driver(hostname=switch.address, username='hmsu0707', password=root_password)
 
     #print 'Opening ...'
     device.open()
@@ -129,18 +129,10 @@ def updateSwitch(request, switch_id, force):
     device.close()
 
     for port in ports:
-        port.a_jour = True
+        port.upToDate = True
         port.save()
 
     print('Done.')
 
     return HttpResponse(final_config.replace('\n', '<br />'))
 
-@login_required(login_url='/admin/login/')
-def money(request):
-        
-        total = Cotisation.objects.filter(client__admin=False).aggregate(Sum('montant'))['montant__sum']
-        
-        message = "Total = " + str(total)
-        
-        return HttpResponse(message)
