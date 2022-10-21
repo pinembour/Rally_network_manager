@@ -1,11 +1,11 @@
-# RivLink Manager
-RivLink Manager is an attempt to make network switches administration accessible to anyone.
+# Rally Network Manager
+Rally Network Manager is an attempt to make network switches administration accessible to anyone.
 
 ## Installation
 
 ```bash
-git clone https://github.com/rivlink/rivlink_manager
-cd rivlink_manager
+git clone https://github.com/pinembour/Rally_network_manager
+cd Rally_network_manager
 virtualenv --python=python3 env
 source env/bin/activate
 pip install django
@@ -18,7 +18,7 @@ pip install napalm
 
 ## Configuration
 
-Edit ```rivlink_manager/settings.py```
+Edit ```rally_network_manager/settings.py```
 
 + Input your own secret key
 + Set debug to false
